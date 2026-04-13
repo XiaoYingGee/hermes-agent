@@ -51,6 +51,30 @@ class TestAnthropicDotToHyphen:
         result = normalize_model_for_provider("anthropic/claude-sonnet-4.6", "anthropic")
         assert result == "claude-sonnet-4-6"
 
+    @pytest.mark.parametrize("model,expected", [
+        ("claude-opus-4.6-1m", "claude-opus-4.6-1m"),
+        ("claude-sonnet-4.6", "claude-sonnet-4.6"),
+    ])
+    def test_anthropic_preserves_dots_with_custom_base_url(self, model, expected):
+        """When base_url is not api.anthropic.com, dots must be preserved."""
+        result = normalize_model_for_provider(
+            model, "anthropic", base_url="http://localhost:8000"
+        )
+        assert result == expected
+
+    def test_anthropic_converts_dots_with_official_base_url(self):
+        """When base_url is api.anthropic.com, dots are still converted."""
+        result = normalize_model_for_provider(
+            "claude-opus-4.6", "anthropic",
+            base_url="https://api.anthropic.com",
+        )
+        assert result == "claude-opus-4-6"
+
+    def test_anthropic_converts_dots_when_no_base_url(self):
+        """When base_url is None (default), dots are converted as usual."""
+        result = normalize_model_for_provider("claude-opus-4.6", "anthropic")
+        assert result == "claude-opus-4-6"
+
 
 # ── OpenCode Zen regression ────────────────────────────────────────────
 

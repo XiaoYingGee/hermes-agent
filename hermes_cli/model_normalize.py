@@ -288,7 +288,12 @@ def _prepend_vendor(model_name: str) -> str:
 # Main normalisation entry point
 # ---------------------------------------------------------------------------
 
-def normalize_model_for_provider(model_input: str, target_provider: str) -> str:
+def normalize_model_for_provider(
+    model_input: str,
+    target_provider: str,
+    *,
+    base_url: str | None = None,
+) -> str:
     """Translate a model name into the format the target provider's API expects.
 
     This is the primary entry point for model name normalisation.  It
@@ -304,6 +309,11 @@ def normalize_model_for_provider(model_input: str, target_provider: str) -> str:
             ``"openrouter"``, ``"anthropic"``, ``"copilot"``,
             ``"deepseek"``, ``"custom"``.  Should already be normalised
             via ``hermes_cli.models.normalize_provider()``.
+        base_url: Optional base URL of the endpoint.  When the target
+            provider is ``"anthropic"`` but the URL does not point to
+            ``api.anthropic.com``, dot-to-hyphen normalisation is
+            skipped because the proxy likely needs the original dotted
+            model name.
 
     Returns:
         The model identifier string that the target provider's API
@@ -355,6 +365,10 @@ def normalize_model_for_provider(model_input: str, target_provider: str) -> str:
     if provider in _DOT_TO_HYPHEN_PROVIDERS:
         bare = _strip_matching_provider_prefix(name, provider)
         if "/" in bare:
+            return bare
+        # When base_url points to a non-native endpoint (custom proxy),
+        # preserve dots — only the official Anthropic API uses hyphens.
+        if base_url and "anthropic.com" not in base_url.lower():
             return bare
         return _dots_to_hyphens(bare)
 

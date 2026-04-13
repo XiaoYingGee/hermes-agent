@@ -667,7 +667,10 @@ class AIAgent:
             )
 
             if self.provider not in _AGGREGATOR_PROVIDERS:
-                self.model = normalize_model_for_provider(self.model, self.provider)
+                self.model = normalize_model_for_provider(
+                    self.model, self.provider,
+                    base_url=getattr(self, "base_url", None),
+                )
         except Exception:
             pass
 
@@ -5816,14 +5819,22 @@ class AIAgent:
         return transformed
 
     def _anthropic_preserve_dots(self) -> bool:
-        """True when using an anthropic-compatible endpoint that preserves dots in model names.
-        Alibaba/DashScope keeps dots (e.g. qwen3.5-plus).
-        MiniMax keeps dots (e.g. MiniMax-M2.7).
-        OpenCode Go keeps dots (e.g. minimax-m2.7)."""
-        if (getattr(self, "provider", "") or "").lower() in {"alibaba", "minimax", "minimax-cn", "opencode-go"}:
+        """True when the endpoint expects dots in model names (e.g. claude-opus-4.6).
+
+        Only the native Anthropic API and OpenCode Zen use hyphens
+        (claude-opus-4-6).  All other Anthropic-compatible endpoints
+        — custom proxies, Alibaba/DashScope, MiniMax, etc. — preserve
+        dots.  When provider is "anthropic" but base_url does not point
+        to api.anthropic.com, the user is routing through a proxy that
+        likely needs the original dotted name.
+        """
+        provider = (getattr(self, "provider", "") or "").lower()
+        if provider not in {"anthropic", "opencode-zen"}:
             return True
         base = (getattr(self, "base_url", "") or "").lower()
-        return "dashscope" in base or "aliyuncs" in base or "minimax" in base or "opencode.ai/zen/go" in base
+        if base and "anthropic.com" not in base:
+            return True
+        return False
 
     def _is_qwen_portal(self) -> bool:
         """Return True when the base URL targets Qwen Portal."""
